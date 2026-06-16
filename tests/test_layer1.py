@@ -56,7 +56,7 @@ class TestLayer1(unittest.TestCase):
         # Execute run_cleanup_task in dry-run mode (apply_mode=False)
         summary = run_cleanup_task(
             account_name="dummy",
-            email_address="wokfromhomie@gmail.com",
+            email_address="dev_test_account@gmail.com",
             apply_mode=False,
             run_analytics=True,
             deep_scan=True,
@@ -100,7 +100,7 @@ class TestLayer1(unittest.TestCase):
         
         summary = run_cleanup_task(
             account_name="dummy",
-            email_address="wokfromhomie@gmail.com",
+            email_address="dev_test_account@gmail.com",
             apply_mode=True,
             run_analytics=False,
             deep_scan=False,

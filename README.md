@@ -62,8 +62,8 @@ Create a configuration file at `~/.gmail_cleanup/config.yaml` or directly in the
 
 ```yaml
 accounts:
-  dummy: wokfromhomie@gmail.com
-  personal: sadrian94@gmail.com
+  dummy: dev_test_account@gmail.com
+  personal: your_email@gmail.com
 
 # Path to write weekly report markdown files directly into Obsidian
 obsidian_vault_path: "C:/Users/sadri/Obsidian/My_Vault"

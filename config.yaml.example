@@ -2,7 +2,7 @@
 # Copy this file to config.yaml and edit with your own credentials
 
 accounts:
-  dummy: wokfromhomie@gmail.com
+  dummy: dev_test_account@gmail.com
   personal: your_email@gmail.com
 
 # Optional: Path to write weekly report markdown files directly into Obsidian

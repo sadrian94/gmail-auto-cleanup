@@ -7,8 +7,8 @@ DEFAULT_CONFIG_PATH_LOCAL = Path("config.yaml")
 
 DEFAULT_CONFIG_CONTENT = {
     "accounts": {
-        "dummy": "wokfromhomie@gmail.com",
-        "personal": "sadrian94@gmail.com"
+        "dummy": "dev_test_account@gmail.com",
+        "personal": "your_email@gmail.com"
     },
     "obsidian_vault_path": "",
     "db_path": str(Path.home() / ".gmail_cleanup" / "analytics.db"),
