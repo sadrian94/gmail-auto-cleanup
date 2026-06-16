@@ -1,0 +1,24 @@
+# Example configuration file for Gmail Auto-Cleanup
+# Copy this file to config.yaml and edit with your own credentials
+
+accounts:
+  dummy: wokfromhomie@gmail.com
+  personal: your_email@gmail.com
+
+# Optional: Path to write weekly report markdown files directly into Obsidian
+# obsidian_vault_path: "/path/to/your/obsidian/vault"
+
+# Days of age required before moving to Gmail Trash
+rules:
+  promotions:
+    days: 30
+    action: TRASH
+    enabled: true
+  social:
+    days: 7
+    action: TRASH
+    enabled: true
+  receipts:
+    days: 730  # 2 years
+    action: TRASH
+    enabled: true
