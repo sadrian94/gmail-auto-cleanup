@@ -66,7 +66,7 @@ accounts:
   personal: your_email@gmail.com
 
 # Path to write weekly report markdown files directly into Obsidian
-obsidian_vault_path: "C:/Users/sadri/Obsidian/My_Vault"
+obsidian_vault_path:
 
 # Days of age required before moving to Gmail Trash
 rules:

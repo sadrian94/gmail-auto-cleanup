@@ -124,5 +124,29 @@ class TestLayer1(unittest.TestCase):
         mock_session.move_to_trash.assert_called_once_with(["100", "200"])
         self.assertEqual(summary["rules_executed"][0]["deleted_count"], 2)
 
+    @patch("gmail_cleanup.layer1.GmailSession")
+    @patch("gmail_cleanup.layer1.AnalyticsDB")
+    def test_run_cleanup_task_all_timeframe(self, mock_db_class, mock_session_class):
+        mock_session = MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.search_uids.return_value = []
+        mock_session.get_inbox_snapshot.return_value = {
+            "inbox": 100, "promotions": 0, "social": 0, "trash": 10
+        }
+        
+        run_cleanup_task(
+            account_name="dummy",
+            email_address="dev_test_account@gmail.com",
+            apply_mode=False,
+            run_analytics=False,
+            deep_scan=True,
+            db_path=":memory:",
+            rules_config={},
+            primary_days="all"
+        )
+        
+        # Verify the primary query has no newer_than parameter and is "all time"
+        mock_session.search_uids.assert_any_call("label:inbox category:primary -label:Do-not-delete")
+
 if __name__ == "__main__":
     unittest.main()

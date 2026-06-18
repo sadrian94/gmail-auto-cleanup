@@ -80,6 +80,11 @@ def main():
         action="store_true",
         help="Set the Gmail App Password for the selected account in the system keyring."
     )
+    parser.add_argument(
+        "--primary-days",
+        default="30",
+        help="Timeframe for scanning Primary Inbox (e.g., 30 for 30 days, 'all' for all time). Default is 30."
+    )
 
     args = parser.parse_args()
     
@@ -128,6 +133,13 @@ def main():
     run_analytics = args.analytics or args.analytics_deep
 
     try:
+        # Parse primary_days
+        primary_days = args.primary_days
+        try:
+            primary_days = int(primary_days)
+        except ValueError:
+            pass
+
         summary = run_cleanup_task(
             account_name=args.account,
             email_address=email_address,
@@ -135,7 +147,8 @@ def main():
             run_analytics=run_analytics,
             deep_scan=deep_scan_mode,
             db_path=config.db_path,
-            rules_config=config.rules
+            rules_config=config.rules,
+            primary_days=primary_days
         )
         
         # 4. If --ai-summary is requested along with the cleanup run, generate it at the end

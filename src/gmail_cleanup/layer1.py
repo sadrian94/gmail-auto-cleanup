@@ -9,7 +9,8 @@ def run_cleanup_task(
     run_analytics: bool,
     deep_scan: bool,
     db_path: str,
-    rules_config: dict
+    rules_config: dict,
+    primary_days: int | str = 30
 ) -> dict:
     """Executes the Gmail Auto-Cleanup rules and profiles the Primary Inbox."""
     summary = {
@@ -116,11 +117,17 @@ def run_cleanup_task(
                 "deleted_count": deleted_count
             })
 
-        # 2. Deep Profile Primary Inbox (Lately scanned past 30 days)
+        # 2. Deep Profile Primary Inbox
         # We always profile the Primary Inbox on deep scans or when requested
         if deep_scan:
-            primary_query = f"label:inbox category:primary newer_than:30d -label:{do_not_delete_label}"
-            print(f"[{account_name.upper()}] Profiling Primary Inbox (past 30 days) with query: '{primary_query}'...")
+            time_filter = ""
+            time_desc = "all time"
+            if primary_days not in [None, 0, -1, "all", "All"]:
+                time_filter = f"newer_than:{primary_days}d "
+                time_desc = f"past {primary_days} days"
+            
+            primary_query = f"label:inbox category:primary {time_filter}-label:{do_not_delete_label}"
+            print(f"[{account_name.upper()}] Profiling Primary Inbox ({time_desc}) with query: '{primary_query}'...")
             primary_uids = session.search_uids(primary_query)
             
             total_primary = len(primary_uids)
