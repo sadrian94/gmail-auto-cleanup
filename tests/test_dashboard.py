@@ -77,18 +77,15 @@ def test_generate_dashboard_with_report(tmp_path, monkeypatch):
     db = AnalyticsDB(str(db_file))
     db.close()
     
-    # Mock AppConfig to return empty obsidian_vault_path so we use the local reports directory
+    # Mock AppConfig to point obsidian_vault_path to our tmp_path directory
     from gmail_cleanup.config import AppConfig
-    monkeypatch.setattr(AppConfig, "obsidian_vault_path", "")
+    monkeypatch.setattr(AppConfig, "obsidian_vault_path", str(tmp_path))
     
-    # Create the reports folder in the current directory temporarily
-    reports_path = Path("reports")
-    created_dir = False
-    if not reports_path.exists():
-        reports_path.mkdir()
-        created_dir = True
-        
-    temp_report = reports_path / "Weekly-Cleanup-Report-test.md"
+    # Create the simulated Obsidian reports directory structure
+    reports_dir = tmp_path / "00 - Inbox" / "Agent_Output"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    
+    temp_report = reports_dir / "Weekly-Cleanup-Report-test.md"
     report_content = """---
 type: weekly-report
 created: 2026-06-18
@@ -99,16 +96,10 @@ created: 2026-06-18
 """
     temp_report.write_text(report_content, encoding="utf-8")
     
-    try:
-        generate_dashboard(account="dummy", db_path=str(db_file), output_path=str(html_file))
-        assert html_file.exists()
-        html_content = html_file.read_text(encoding="utf-8")
-        assert "Weekly Summary" in html_content
-        assert "<strong>Total deleted</strong>: 150 emails." in html_content
-        assert "<code>github</code>" in html_content
-    finally:
-        # Clean up
-        if temp_report.exists():
-            temp_report.unlink()
-        if created_dir and reports_path.exists():
-            reports_path.rmdir()
+    generate_dashboard(account="dummy", db_path=str(db_file), output_path=str(html_file))
+    assert html_file.exists()
+    html_content = html_file.read_text(encoding="utf-8")
+    assert "Weekly Summary" in html_content
+    assert "<strong>Total deleted</strong>: 150 emails." in html_content
+    assert "<code>github</code>" in html_content
+

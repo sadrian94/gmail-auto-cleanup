@@ -67,7 +67,7 @@ def _markdown_to_html(md_text: str) -> str:
         
     return "\n".join(html)
 
-def generate_dashboard(account: str, db_path: str, output_path: str):
+def generate_dashboard(account: str, db_path: str, output_path: str) -> None:
     """Queries SQLite statistics and writes a premium HTML/Chart.js dashboard."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -179,7 +179,7 @@ def generate_dashboard(account: str, db_path: str, output_path: str):
         print(f"Warning: Could not check Obsidian vault path: {e}")
             
     if reports_dir.exists():
-        report_files = sorted(reports_dir.glob("Weekly-Cleanup-Report-*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+        report_files = sorted(reports_dir.glob("Weekly-Cleanup-Report-*.md"), key=lambda p: p.name, reverse=True)
         if report_files:
             try:
                 latest_report = report_files[0].read_text(encoding="utf-8")
