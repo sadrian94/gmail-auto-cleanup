@@ -81,6 +81,10 @@ class TestLayer1(unittest.TestCase):
         mock_db.record_run.assert_called_once()
         mock_db.record_snapshot.assert_called_once()
 
+        # Verify that ensure_label_exists was called for configured labels
+        mock_session.ensure_label_exists.assert_any_call("Review-to-delete")
+        mock_session.ensure_label_exists.assert_any_call("Do-not-delete")
+
         # Verify that search queries excluded Do-not-delete labeled emails
         search_calls = mock_session.search_uids.call_args_list
         queries = [call[0][0] for call in search_calls]

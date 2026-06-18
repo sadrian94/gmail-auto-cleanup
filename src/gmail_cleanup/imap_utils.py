@@ -82,6 +82,21 @@ class GmailSession:
             pass
         return default_fallback
 
+    def ensure_label_exists(self, label_name: str) -> None:
+        """Checks if a label exists in Gmail, and creates it if it does not."""
+        try:
+            status, folders = self.mail.list(pattern=f'"{label_name}"')
+            if status == 'OK' and folders and folders[0] is not None:
+                return
+        except Exception:
+            pass
+
+        try:
+            self.mail.create(f'"{label_name}"')
+            print(f"[{self.account_name.upper()}] Created Gmail label: '{label_name}'")
+        except Exception as e:
+            print(f"[{self.account_name.upper()}] Warning: Failed to create label '{label_name}': {e}")
+
     def search_uids(self, query: str) -> list[str]:
         """Searches messages using Gmail's X-GM-RAW extension."""
         # Always select All Mail first so search covers entire mailbox
@@ -138,10 +153,7 @@ class GmailSession:
             return 0
 
         # Ensure label exists (create it if not)
-        try:
-            self.mail.create(f'"{label_name}"')
-        except Exception:
-            pass # ignore if already exists or fails
+        self.ensure_label_exists(label_name)
 
         # Select INBOX in read-write mode
         self.mail.select("INBOX", readonly=False)

@@ -37,6 +37,11 @@ def run_cleanup_task(
 
     # Connect to Gmail
     with GmailSession(account_name, email_address) as session:
+        # Ensure configured Review and Do-not-delete labels exist in Gmail
+        review_label = config.labels.get("review_to_delete", "Review-to-delete")
+        session.ensure_label_exists(review_label)
+        session.ensure_label_exists(do_not_delete_label)
+
         # 1. Execute Cleanup Rules
         for rule_name, rule_data in rules_config.items():
             if not rule_data.get("enabled", True):
