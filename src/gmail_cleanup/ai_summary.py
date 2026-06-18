@@ -10,6 +10,7 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
     db = AnalyticsDB(db_path)
     try:
         data = db.get_weekly_data(account)
+        recent_emails = db.get_recent_emails(account)
     finally:
         db.close()
 
@@ -161,6 +162,8 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
         model = "deepseek-chat"
 
     gemini_insights = ""
+    suggested_todos = []
+    topics_catchup = []
     api_key = ai_config.get("api_key")
     if not api_key:
         api_key = os.environ.get(api_key_env)
@@ -178,23 +181,31 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
                     "unread": primary["unread_emails"] if primary else 0,
                     "newsletters": primary["newsletters_count"] if primary else 0,
                     "top_senders": primary.get("top_senders_json", "[]") if primary else "[]"
-                } if primary else None
+                } if primary else None,
+                "recent_emails": recent_emails[:50]  # Limit to 50 to fit inside prompt context
             }
             
-            prompt = f"""You are a professional email productivity analyst. Analyze the following email statistics and generate a concise list of "Advanced AI Insights" in Traditional Chinese (繁體中文).
-Identify patterns, hidden anomalies (e.g. notifications flood, subscription drift), and give actionable advice on improving email workflow. Keep it short and high-impact.
+            prompt = f"""You are a professional email productivity analyst. Analyze the following email statistics and the body snippets of recent emails in the Primary Inbox, and generate:
+1. "report_markdown": A concise list of "Advanced AI Insights" in Traditional Chinese (繁體中文). Identify patterns, hidden anomalies (e.g. notifications flood, subscription drift), and give actionable advice on improving email workflow. Keep it short and high-impact.
+2. "suggested_clutter_senders": An array of sender email addresses (strings) that you suggest the user should review for deletion/unsubscribing. Only include clear newsletter or notification senders.
+3. "suggested_todos": A list of actionable task items (strings) in Traditional Chinese (繁體中文) that are explicitly requested or implied in the recent email snippets (e.g. follow-ups, meetings, action items). If none are found, return an empty array.
+4. "topics_catchup": A list of important topics, discussions, or newsletters (strings) in Traditional Chinese (繁體中文) from the past 7 days that the user might want to catch up on. If none, return an empty array.
 
 Raw Data:
 {json.dumps(raw_data, indent=2)}
 
-You MUST return a JSON object containing exactly the following two keys:
-1. "report_markdown": The markdown text of your analysis, starting directly with '### 🤖 AI 智能深度分析與建議'.
-2. "suggested_clutter_senders": An array of sender email addresses (strings) that you suggest the user should review for deletion/unsubscribing. Only include clear newsletter or notification senders.
+You MUST return a JSON object containing exactly the following four keys:
+1. "report_markdown": string (Markdown text, starting directly with '### 🤖 AI 智能深度分析與建議')
+2. "suggested_clutter_senders": array of strings
+3. "suggested_todos": array of strings
+4. "topics_catchup": array of strings
 
 Output only valid JSON. Do not wrap in markdown code block formatting (like ```json ... ```). Example response format:
 {{
   "report_markdown": "### 🤖 AI 智能深度分析與建議\\n- 建議退訂...",
-  "suggested_clutter_senders": ["newsletter@example.com"]
+  "suggested_clutter_senders": ["newsletter@example.com"],
+  "suggested_todos": ["請於本週五前確認報價單", "回覆 Crystal 關於專案進度的郵件"],
+  "topics_catchup": ["Price網購本週大促銷活動資訊", "GitHub 專案合併請求通知"]
 }}"""
             
             response_text = ""
@@ -253,16 +264,34 @@ Output only valid JSON. Do not wrap in markdown code block formatting (like ```j
             structured_data = _parse_structured_response(response_text)
             gemini_insights = "\n" + structured_data.get("report_markdown", "").strip() + "\n"
             suggested_clutter = structured_data.get("suggested_clutter_senders", [])
+            suggested_todos = structured_data.get("suggested_todos", [])
+            topics_catchup = structured_data.get("topics_catchup", [])
             
             if suggested_clutter:
                 print(f"AI suggested clutter senders: {suggested_clutter}")
                 label_clutter_emails(account, suggested_clutter)
+                
+            try:
+                db_write = AnalyticsDB(db_path)
+                db_write.update_latest_run_ai_output(account, suggested_todos, topics_catchup)
+                db_write.close()
+            except Exception as db_err:
+                print(f"Warning: Failed to save AI suggested to-dos and topics to database: {db_err}")
                     
         except Exception as e:
             print(f"Warning: Failed to call AI API ({provider}): {e}. Falling back to programmatic statistics only.")
 
     # Combine everything into the final Markdown Report
     date_str = datetime.now().strftime("%Y-%m-%d")
+    
+    todo_lines_str = ""
+    if suggested_todos:
+        todo_lines_str = "### 📋 建議行動待辦 (Suggested To-dos)\n" + "\n".join([f"- [ ] {t}" for t in suggested_todos]) + "\n\n"
+
+    catchup_lines_str = ""
+    if topics_catchup:
+        catchup_lines_str = "### 📖 重要追蹤摘要 (Topics to Catch Up)\n" + "\n".join([f"- {topic}" for topic in topics_catchup]) + "\n\n"
+
     report_md = f"""---
 type: report
 created: {date_str}
@@ -295,6 +324,8 @@ source: gmail-cleanup-cli
 ---
 
 {gemini_insights if gemini_insights else ""}
+
+{todo_lines_str}{catchup_lines_str}
 
 {primary_action_section}
 

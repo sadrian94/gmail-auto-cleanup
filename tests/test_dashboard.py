@@ -67,7 +67,7 @@ def test_generate_dashboard_empty(tmp_path):
     assert html_file.exists()
     html_content = html_file.read_text(encoding="utf-8")
     assert "dashboard" in html_content.lower()
-    assert "n/a" in html_content.lower()  # top sender is N/A
+    assert "0" in html_content  # counts are 0 when empty
 
 
 def test_generate_dashboard_with_report(tmp_path, monkeypatch):

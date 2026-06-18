@@ -1,8 +1,10 @@
+import email
 import email.header
 import email.utils
 import imaplib
 import os
 import keyring
+import re
 from datetime import datetime
 
 class GmailSession:
@@ -223,6 +225,67 @@ class GmailSession:
                     current_flags = []
 
         return headers_list
+
+    def fetch_snippets(self, uids: list[str]) -> dict[str, str]:
+        """Fetches body text snippets for the specified UIDs in chunks of 100."""
+        if not uids:
+            return {}
+
+        self.mail.select(self.all_mail_folder, readonly=True)
+        chunk_size = 100
+        snippets = {}
+
+        for i in range(0, len(uids), chunk_size):
+            chunk = uids[i:i+chunk_size]
+            uid_str = ",".join(chunk)
+
+            # Fetch BODY[TEXT] (the raw body parts)
+            status, data = self.mail.uid('FETCH', uid_str, '(BODY.PEEK[TEXT])')
+            if status != 'OK':
+                continue
+
+            current_uid = None
+            for item in data:
+                if isinstance(item, tuple):
+                    desc = item[0].decode('utf-8', errors='ignore')
+                    uid_part = desc.split('UID')
+                    if len(uid_part) > 1:
+                        current_uid = uid_part[1].split()[0]
+                    
+                    body_bytes = item[1]
+                    snippet = self._clean_body_content(body_bytes)
+                    if current_uid:
+                        snippets[current_uid] = snippet
+                        
+        return snippets
+
+    def _clean_body_content(self, body_bytes: bytes) -> str:
+        """Helper to extract clean plain text from raw email body bytes."""
+        try:
+            content = body_bytes.decode('utf-8', errors='ignore').strip()
+            
+            # If it's multipart/mime, parse it
+            if "Content-Type:" in content or "boundary=" in content or content.startswith("This is a multi-part message"):
+                msg = email.message_from_string(content)
+                text_parts = []
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            text_parts.append(payload.decode('utf-8', errors='ignore'))
+                if text_parts:
+                    content = "\n".join(text_parts).strip()
+            
+            # Simple regex to strip HTML tags if any html got through
+            content = re.sub(r'<[^>]+>', '', content)
+            
+            # Replace multiple spaces/newlines with single ones
+            content = re.sub(r'\s+', ' ', content)
+            
+            # Return a snippet of up to 400 characters
+            return content[:400].strip()
+        except Exception:
+            return ""
 
     def _parse_header_lines(self, header_content: str) -> dict:
         """Parses header text lines into a dictionary."""

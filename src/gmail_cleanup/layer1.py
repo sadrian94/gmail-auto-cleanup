@@ -175,6 +175,51 @@ def run_cleanup_task(
                 for email, count in Counter(newsletters_senders).most_common(10)
             ]
 
+            # Fetch snippets and save recent primary emails (past 7 days)
+            recent_query = f"label:inbox category:primary newer_than:7d -label:{do_not_delete_label}"
+            print(f"[{account_name.upper()}] Scanning recent Primary Inbox (past 7 days) for content analysis...")
+            recent_uids = session.search_uids(recent_query)
+            
+            recent_emails = []
+            if recent_uids:
+                # Limit to latest 100 recent emails to avoid huge payload and token limits
+                recent_uids = recent_uids[-100:]
+                print(f"[{account_name.upper()}] Fetching snippets for {len(recent_uids)} recent emails...")
+                try:
+                    snippets = session.fetch_snippets(recent_uids)
+                    header_map = {h["uid"]: h for h in primary_headers if h.get("uid")}
+                    for uid in recent_uids:
+                        h = header_map.get(uid)
+                        if h:
+                            recent_emails.append({
+                                "uid": uid,
+                                "sender_name": h.get("from_name"),
+                                "sender_email": h.get("from_email"),
+                                "subject": h.get("subject"),
+                                "date": h.get("date"),
+                                "snippet": snippets.get(uid, "")
+                            })
+                        else:
+                            try:
+                                fallback_h = session.fetch_headers([uid])
+                                if fallback_h:
+                                    fh = fallback_h[0]
+                                    recent_emails.append({
+                                        "uid": uid,
+                                        "sender_name": fh.get("from_name"),
+                                        "sender_email": fh.get("from_email"),
+                                        "subject": fh.get("subject"),
+                                        "date": fh.get("date"),
+                                        "snippet": snippets.get(uid, "")
+                                    })
+                            except Exception:
+                                pass
+                except Exception as e:
+                    print(f"Warning: Failed to fetch snippets or headers for recent emails: {e}")
+            
+            if run_analytics and db:
+                db.save_recent_emails(account_name, recent_emails)
+
             primary_stats = {
                 "total": total_primary,
                 "unread": unread_primary,

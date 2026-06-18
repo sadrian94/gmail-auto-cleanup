@@ -85,7 +85,24 @@ class AnalyticsDB:
                     top_senders_json TEXT,
                     top_unread_senders_json TEXT,
                     top_newsletters_json TEXT,
+                    suggested_todos_json TEXT,
+                    topics_catchup_json TEXT,
                     FOREIGN KEY(run_id) REFERENCES cleanup_runs(id) ON DELETE CASCADE
+                );
+            """)
+
+            # 6. Recent Primary Inbox Emails table (temporary storage for snippets, cleared each run)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS recent_primary_emails (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    account TEXT NOT NULL,
+                    uid TEXT NOT NULL,
+                    sender_name TEXT,
+                    sender_email TEXT NOT NULL,
+                    subject TEXT,
+                    snippet TEXT,
+                    date TEXT,
+                    UNIQUE(account, uid)
                 );
             """)
             
@@ -100,6 +117,10 @@ class AnalyticsDB:
                     conn.execute("ALTER TABLE primary_inbox_stats ADD COLUMN top_unread_senders_json TEXT;")
                 if "top_newsletters_json" not in columns:
                     conn.execute("ALTER TABLE primary_inbox_stats ADD COLUMN top_newsletters_json TEXT;")
+                if "suggested_todos_json" not in columns:
+                    conn.execute("ALTER TABLE primary_inbox_stats ADD COLUMN suggested_todos_json TEXT;")
+                if "topics_catchup_json" not in columns:
+                    conn.execute("ALTER TABLE primary_inbox_stats ADD COLUMN topics_catchup_json TEXT;")
             
             conn.commit()
 
@@ -134,7 +155,7 @@ class AnalyticsDB:
             # 4. Insert Primary Inbox stats if provided
             if primary_stats:
                 cursor.execute(
-                    "INSERT INTO primary_inbox_stats (run_id, total_emails, unread_emails, newsletters_count, top_senders_json, top_unread_senders_json, top_newsletters_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO primary_inbox_stats (run_id, total_emails, unread_emails, newsletters_count, top_senders_json, top_unread_senders_json, top_newsletters_json, suggested_todos_json, topics_catchup_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         run_id,
                         primary_stats["total"],
@@ -142,7 +163,9 @@ class AnalyticsDB:
                         primary_stats["newsletters"],
                         json.dumps(primary_stats.get("top_senders", [])),
                         json.dumps(primary_stats.get("top_unread_senders", [])),
-                        json.dumps(primary_stats.get("top_newsletters", []))
+                        json.dumps(primary_stats.get("top_newsletters", [])),
+                        json.dumps(primary_stats.get("suggested_todos", [])),
+                        json.dumps(primary_stats.get("topics_catchup", []))
                     )
                 )
 
@@ -301,3 +324,51 @@ class AnalyticsDB:
 
         report.append("=" * 60)
         return "\n".join(report)
+
+    def save_recent_emails(self, account: str, emails: list[dict]) -> None:
+        """Deletes existing recent primary emails for the account and saves the new list."""
+        with self.conn as conn:
+            conn.execute("DELETE FROM recent_primary_emails WHERE account = ?", (account,))
+            for email in emails:
+                conn.execute("""
+                    INSERT OR REPLACE INTO recent_primary_emails 
+                    (account, uid, sender_name, sender_email, subject, snippet, date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    account,
+                    email["uid"],
+                    email.get("sender_name"),
+                    email["sender_email"],
+                    email.get("subject"),
+                    email.get("snippet"),
+                    email.get("date")
+                ))
+            conn.commit()
+
+    def get_recent_emails(self, account: str) -> list[dict]:
+        """Retrieves the list of recent primary inbox emails."""
+        cursor = self.conn.cursor()
+        rows = cursor.execute("""
+            SELECT uid, sender_name, sender_email, subject, snippet, date 
+            FROM recent_primary_emails 
+            WHERE account = ?
+            ORDER BY date DESC
+        """, (account,)).fetchall()
+        return [dict(r) for r in rows]
+
+    def update_latest_run_ai_output(self, account: str, todos: list[str], topics: list[str]) -> None:
+        """Updates the latest run's primary inbox stats with the AI-generated to-dos and topics."""
+        with self.conn as conn:
+            row = conn.execute("""
+                SELECT id FROM cleanup_runs 
+                WHERE account = ? 
+                ORDER BY timestamp DESC LIMIT 1
+            """, (account,)).fetchone()
+            if row:
+                run_id = row["id"]
+                conn.execute("""
+                    UPDATE primary_inbox_stats 
+                    SET suggested_todos_json = ?, topics_catchup_json = ? 
+                    WHERE run_id = ?
+                """, (json.dumps(todos), json.dumps(topics), run_id))
+            conn.commit()
