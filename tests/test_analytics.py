@@ -93,10 +93,11 @@ class TestAnalyticsDB(unittest.TestCase):
             "dummy", "mock_analytics.db", "dashboard.html"
         )
 
+    @unittest.mock.patch('gmail_cleanup.ai_summary.label_clutter_emails')
     @unittest.mock.patch('urllib.request.urlopen')
     @unittest.mock.patch('gmail_cleanup.config.AppConfig')
     @unittest.mock.patch('os.environ', {"OPENCODE_API_KEY": "mock-opencode-key"})
-    def test_generate_weekly_report_opencoder_go(self, mock_app_config, mock_urlopen):
+    def test_generate_weekly_report_opencoder_go(self, mock_app_config, mock_urlopen, mock_label_clutter):
         # Setup mock config
         mock_config_instance = mock_app_config.return_value
         mock_config_instance.accounts = {"dummy": "dev_test_account@gmail.com"}
@@ -118,20 +119,51 @@ class TestAnalyticsDB(unittest.TestCase):
             db.record_run("dummy", True, [{"rule_name": "social", "found_count": 5, "deleted_count": 5}], [])
             db.close()
             
-            # Mock API response
+            # Mock API response returning structured JSON
             mock_response = unittest.mock.Mock()
-            mock_response.read.return_value = b'{"choices": [{"message": {"content": "### AI Insights\\n- Mocked Opencode Go Insights"}}]}'
+            mock_response.read.return_value = b'{"choices": [{"message": {"content": "{\\"report_markdown\\": \\"### AI Insights\\\\n- Mocked Opencode Go Insights\\", \\"suggested_clutter_senders\\": [\\"spammer@company.com\\"]}"}}]}'
             mock_urlopen.return_value.__enter__.return_value = mock_response
             
             from gmail_cleanup.ai_summary import generate_weekly_report
             report_md = generate_weekly_report("dummy", db_file, tmpdir)
             self.assertIn("Mocked Opencode Go Insights", report_md)
             
+        # Verify labeling was triggered with mock senders list
+        mock_label_clutter.assert_called_once_with("dummy", ["spammer@company.com"])
+
         # Verify urlopen was called
         mock_urlopen.assert_called_once()
         req = mock_urlopen.call_args[0][0]
         self.assertEqual(req.full_url, "https://opencode.ai/zen/go/v1/chat/completions")
         self.assertEqual(req.get_header("Authorization"), "Bearer mock-opencode-key")
+
+    @unittest.mock.patch('gmail_cleanup.imap_utils.GmailSession')
+    @unittest.mock.patch('gmail_cleanup.config.AppConfig')
+    def test_label_clutter_emails(self, mock_app_config, mock_session_class):
+        # Configure mock config
+        mock_config_instance = mock_app_config.return_value
+        mock_config_instance.accounts = {"dummy": "dev_test_account@gmail.com"}
+        mock_config_instance.labels = {
+            "review_to_delete": "Review-to-delete",
+            "do_not_delete": "Do-not-delete"
+        }
+        
+        # Configure mock session
+        mock_session = unittest.mock.MagicMock()
+        mock_session_class.return_value.__enter__.return_value = mock_session
+        mock_session.search_uids.return_value = ["10", "20"]
+        mock_session.add_label_to_uids.return_value = 2
+        
+        from gmail_cleanup.ai_summary import label_clutter_emails
+        label_clutter_emails("dummy", ["spammer1@spam.com", "spammer2@spam.com"])
+        
+        # Verify search query
+        mock_session.search_uids.assert_called_once_with(
+            "label:inbox category:primary newer_than:30d -label:Do-not-delete (from:spammer1@spam.com OR from:spammer2@spam.com)"
+        )
+        
+        # Verify labeling call
+        mock_session.add_label_to_uids.assert_called_once_with(["10", "20"], "Review-to-delete")
 
 if __name__ == "__main__":
     import unittest.mock

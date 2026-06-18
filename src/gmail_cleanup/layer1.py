@@ -27,7 +27,13 @@ def run_cleanup_task(
     primary_stats = None
 
     # Load DB
+    # Load DB
     db = AnalyticsDB(db_path) if run_analytics else None
+
+    # Load label settings
+    from gmail_cleanup.config import AppConfig
+    config = AppConfig()
+    do_not_delete_label = config.labels.get("do_not_delete", "Do-not-delete")
 
     # Connect to Gmail
     with GmailSession(account_name, email_address) as session:
@@ -43,19 +49,22 @@ def run_cleanup_task(
                 query = f"category:promotions older_than:{days}d"
             elif rule_name == "social":
                 query = f"category:social older_than:{days}d"
-            elif rule_name == "receipts":
-                query = f"label:receipts older_than:{days}d"
+            elif rule_name == "purchases" or rule_name == "receipts":
+                query = f"label:purchases older_than:{days}d"
             else:
                 # Custom rule support
                 query = f"label:{rule_name} older_than:{days}d"
 
+            # Exclude Do-not-delete emails
+            query += f" -label:{do_not_delete_label}"
+
             print(f"[{account_name.upper()}] Running rule '{rule_name}' with query: '{query}'...")
             uids = session.search_uids(query)
             
-            # Receipts fallback logic
-            if rule_name == "receipts" and not uids:
-                fallback_query = f'(subject:receipt OR subject:invoice OR subject:billing OR subject:"order confirmation") older_than:{days}d'
-                print(f"[{account_name.upper()}] No labeled receipts found. Trying fallback query: '{fallback_query}'...")
+            # Purchases / Receipts fallback logic
+            if (rule_name == "purchases" or rule_name == "receipts") and not uids:
+                fallback_query = f'(subject:receipt OR subject:invoice OR subject:billing OR subject:"order confirmation") older_than:{days}d -label:{do_not_delete_label}'
+                print(f"[{account_name.upper()}] No labeled purchases/receipts found. Trying fallback query: '{fallback_query}'...")
                 uids = session.search_uids(fallback_query)
                 query = fallback_query  # update query for logging
 
@@ -66,7 +75,7 @@ def run_cleanup_task(
                 print(f"[{account_name.upper()}] Found {found_count} messages matching rule '{rule_name}'.")
                 
                 # Perform Deep Scan if requested (only fetch headers for matching emails before deleting them)
-                if deep_scan and rule_name in ["promotions", "social", "receipts"]:
+                if deep_scan and rule_name in ["promotions", "social", "purchases", "receipts"]:
                     print(f"[{account_name.upper()}] Fetching headers for sender analysis...")
                     try:
                         headers = session.fetch_headers(uids)
@@ -105,7 +114,7 @@ def run_cleanup_task(
         # 2. Deep Profile Primary Inbox (Lately scanned past 30 days)
         # We always profile the Primary Inbox on deep scans or when requested
         if deep_scan:
-            primary_query = "label:inbox category:primary newer_than:30d"
+            primary_query = f"label:inbox category:primary newer_than:30d -label:{do_not_delete_label}"
             print(f"[{account_name.upper()}] Profiling Primary Inbox (past 30 days) with query: '{primary_query}'...")
             primary_uids = session.search_uids(primary_query)
             

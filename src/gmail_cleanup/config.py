@@ -23,11 +23,20 @@ DEFAULT_CONFIG_CONTENT = {
             "action": "TRASH",
             "enabled": True
         },
-        "receipts": {
+        "purchases": {
             "days": 730,  # 2 years
             "action": "TRASH",
             "enabled": True
+        },
+        "updates": {
+            "days": 30,
+            "action": "TRASH",
+            "enabled": True
         }
+    },
+    "labels": {
+        "review_to_delete": "Review-to-delete",
+        "do_not_delete": "Do-not-delete"
     },
     "ai": {
         "provider": "gemini",
@@ -89,6 +98,10 @@ class AppConfig:
     @property
     def rules(self) -> dict:
         return self.data.get("rules", {})
+
+    @property
+    def labels(self) -> dict:
+        return self.data.get("labels", {})
 
     @property
     def ai(self) -> dict:

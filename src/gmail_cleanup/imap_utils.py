@@ -132,6 +132,32 @@ class GmailSession:
 
         return count
 
+    def add_label_to_uids(self, uids: list[str], label_name: str) -> int:
+        """Adds a Gmail label to the specified UIDs in chunks of 500."""
+        if not uids:
+            return 0
+
+        # Ensure label exists (create it if not)
+        try:
+            self.mail.create(f'"{label_name}"')
+        except Exception:
+            pass # ignore if already exists or fails
+
+        # Select INBOX in read-write mode
+        self.mail.select("INBOX", readonly=False)
+
+        chunk_size = 500
+        count = 0
+        for i in range(0, len(uids), chunk_size):
+            chunk = uids[i:i+chunk_size]
+            uid_str = ",".join(chunk)
+
+            status, _ = self.mail.uid('STORE', uid_str, '+X-GM-LABELS', f'"{label_name}"')
+            if status == 'OK':
+                count += len(chunk)
+
+        return count
+
     def fetch_headers(self, uids: list[str]) -> list[dict]:
         """Fetches header fields (From, Subject, Date, List-Unsubscribe, and flags) in chunks of 500
 

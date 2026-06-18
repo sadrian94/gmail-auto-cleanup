@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from pathlib import Path
 from datetime import datetime
 from gmail_cleanup.analytics import AnalyticsDB
@@ -186,17 +187,33 @@ Identify patterns, hidden anomalies (e.g. notifications flood, subscription drif
 Raw Data:
 {json.dumps(raw_data, indent=2)}
 
-Format your response as markdown starting directly with '### 🤖 AI 智能深度分析與建議'."""
+You MUST return a JSON object containing exactly the following two keys:
+1. "report_markdown": The markdown text of your analysis, starting directly with '### 🤖 AI 智能深度分析與建議'.
+2. "suggested_clutter_senders": An array of sender email addresses (strings) that you suggest the user should review for deletion/unsubscribing. Only include clear newsletter or notification senders.
+
+Output only valid JSON. Do not wrap in markdown code block formatting (like ```json ... ```). Example response format:
+{{
+  "report_markdown": "### 🤖 AI 智能深度分析與建議\\n- 建議退訂...",
+  "suggested_clutter_senders": ["newsletter@example.com"]
+}}"""
             
+            response_text = ""
             if provider == "gemini":
                 from google import genai
                 print(f"GEMINI_API_KEY detected. Invoking Gemini API ({model}) for advanced insights...")
                 client = genai.Client(api_key=api_key)
-                response = client.models.generate_content(
-                    model=model,
-                    contents=prompt
-                )
-                gemini_insights = "\n" + response.text.strip() + "\n"
+                try:
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=prompt,
+                        config={"response_mime_type": "application/json"}
+                    )
+                except Exception:
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=prompt
+                    )
+                response_text = response.text.strip()
                 
             elif provider == "opencoder-go":
                 import urllib.request
@@ -217,7 +234,8 @@ Format your response as markdown starting directly with '### 🤖 AI 智能深�
                     "model": model,
                     "messages": [
                         {"role": "user", "content": prompt}
-                    ]
+                    ],
+                    "response_format": {"type": "json_object"}
                 }
                 
                 req = urllib.request.Request(
@@ -229,8 +247,16 @@ Format your response as markdown starting directly with '### 🤖 AI 智能深�
                 
                 with urllib.request.urlopen(req, timeout=30) as response:
                     res_data = json.loads(response.read().decode("utf-8"))
-                    content = res_data["choices"][0]["message"]["content"]
-                    gemini_insights = "\n" + content.strip() + "\n"
+                    response_text = res_data["choices"][0]["message"]["content"].strip()
+
+            # Parse structured response
+            structured_data = _parse_structured_response(response_text)
+            gemini_insights = "\n" + structured_data.get("report_markdown", "").strip() + "\n"
+            suggested_clutter = structured_data.get("suggested_clutter_senders", [])
+            
+            if suggested_clutter:
+                print(f"AI suggested clutter senders: {suggested_clutter}")
+                label_clutter_emails(account, suggested_clutter)
                     
         except Exception as e:
             print(f"Warning: Failed to call AI API ({provider}): {e}. Falling back to programmatic statistics only.")
@@ -300,3 +326,56 @@ source: gmail-cleanup-cli
         
     print(f"Weekly report successfully written to: {report_file.resolve()}")
     return report_md
+
+def _parse_structured_response(text: str) -> dict:
+    """Safely extracts JSON object from raw response text, handling code blocks."""
+    text_clean = text.strip()
+    if text_clean.startswith("```"):
+        match = re.search(r"({.*})", text_clean, re.DOTALL)
+        if match:
+            text_clean = match.group(1)
+        else:
+            lines = text_clean.split("\n")
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            text_clean = "\n".join(lines).strip()
+            
+    try:
+        return json.loads(text_clean)
+    except Exception as e:
+        print(f"Warning: Failed to parse structured JSON: {e}. Raw response: {text[:200]}...")
+        return {
+            "report_markdown": text,
+            "suggested_clutter_senders": []
+        }
+
+def label_clutter_emails(account: str, senders: list[str]) -> None:
+    """Connects to Gmail and labels emails from the specified senders for review."""
+    from gmail_cleanup.imap_utils import GmailSession
+    from gmail_cleanup.config import AppConfig
+    
+    config = AppConfig()
+    email_address = config.accounts.get(account)
+    if not email_address:
+        print(f"Warning: Account '{account}' not configured. Skipping labeling.")
+        return
+        
+    review_label = config.labels.get("review_to_delete", "Review-to-delete")
+    do_not_delete_label = config.labels.get("do_not_delete", "Do-not-delete")
+    
+    try:
+        with GmailSession(account, email_address) as session:
+            sender_subquery = " OR ".join([f"from:{s}" for s in senders])
+            query = f"label:inbox category:primary newer_than:30d -label:{do_not_delete_label} ({sender_subquery})"
+            
+            print(f"Searching for clutter emails to label with query: '{query}'...")
+            uids = session.search_uids(query)
+            
+            if uids:
+                print(f"Found {len(uids)} clutter emails to label as '{review_label}'.")
+                labeled_count = session.add_label_to_uids(uids, review_label)
+                print(f"Successfully applied label '{review_label}' to {labeled_count} messages.")
+            else:
+                print("No matching clutter emails found in Primary Inbox to label.")
+    except Exception as e:
+        print(f"Warning: Failed to apply Review-to-delete labels: {e}")
+

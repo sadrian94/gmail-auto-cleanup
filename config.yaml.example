@@ -18,10 +18,19 @@ rules:
     days: 7
     action: TRASH
     enabled: true
-  receipts:
+  purchases:
     days: 730  # 2 years
     action: TRASH
     enabled: true
+  updates:
+    days: 30
+    action: TRASH
+    enabled: true
+
+# Custom label names for review and exclusion
+labels:
+  review_to_delete: "Review-to-delete"
+  do_not_delete: "Do-not-delete"
 
 # AI Insights Service Settings
 # Supports "gemini" and "opencoder-go" providers

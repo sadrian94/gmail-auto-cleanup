@@ -80,6 +80,13 @@ class TestLayer1(unittest.TestCase):
         # Verify db.record_run was called
         mock_db.record_run.assert_called_once()
         mock_db.record_snapshot.assert_called_once()
+
+        # Verify that search queries excluded Do-not-delete labeled emails
+        search_calls = mock_session.search_uids.call_args_list
+        queries = [call[0][0] for call in search_calls]
+        self.assertTrue(any("category:promotions" in q and "-label:Do-not-delete" in q for q in queries))
+        self.assertTrue(any("category:social" in q and "-label:Do-not-delete" in q for q in queries))
+        self.assertTrue(any("label:purchases" in q and "-label:Do-not-delete" in q for q in queries))
         
     @patch("gmail_cleanup.layer1.GmailSession")
     @patch("gmail_cleanup.layer1.AnalyticsDB")
