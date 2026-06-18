@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 from datetime import datetime
 from gmail_cleanup.analytics import AnalyticsDB
@@ -6,7 +7,10 @@ from gmail_cleanup.analytics import AnalyticsDB
 def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
     """Generates the weekly cleanup and Primary Inbox analysis report in Markdown."""
     db = AnalyticsDB(db_path)
-    data = db.get_weekly_data(account)
+    try:
+        data = db.get_weekly_data(account)
+    finally:
+        db.close()
 
     if not data["runs"]:
         return f"No cleanup runs found in the past 7 days to generate a report."
@@ -87,7 +91,6 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
         news_pct = (newsletters / total * 100) if total > 0 else 0
 
         # Deserialize JSON fields safely
-        import json
         top_senders = json.loads(primary.get("top_senders_json") or "[]")
         top_unread = json.loads(primary.get("top_unread_senders_json") or "[]")
         top_news = json.loads(primary.get("top_newsletters_json") or "[]")
@@ -140,15 +143,27 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
         mode = "實際清理" if r["apply_mode"] == 1 else "模擬運行"
         runs_history_rows += f"| {r['timestamp']} | {mode} | {r['total_found']} | {r['total_deleted']} |\n"
 
-    # Call Gemini API if GEMINI_API_KEY is present
+    # Load AI settings from configuration
+    ai_config = config.ai
+    provider = ai_config.get("provider", "gemini").lower()
+    model = ai_config.get("model", "gemini-2.5-flash")
+    api_key_env = ai_config.get("api_key_env", "GEMINI_API_KEY")
+    base_url = ai_config.get("base_url", "https://opencode.ai/zen/go/v1")
+
+    # If the provider is opencoder-go and api_key_env is default, fallback to OPENCODE_API_KEY if present
+    if provider == "opencoder-go" and api_key_env == "GEMINI_API_KEY":
+        if "OPENCODE_API_KEY" in os.environ:
+            api_key_env = "OPENCODE_API_KEY"
+            
+    # Default model override for opencoder-go
+    if provider == "opencoder-go" and model == "gemini-2.5-flash":
+        model = "deepseek-chat"
+
     gemini_insights = ""
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get(api_key_env)
+    
     if api_key:
         try:
-            from google import genai
-            print("GEMINI_API_KEY detected. Invoking Gemini API for advanced insights...")
-            client = genai.Client(api_key=api_key)
-            
             # Formulate prompt with raw data
             raw_data = {
                 "account": account,
@@ -156,10 +171,10 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
                 "snapshots": snapshots[-5:] if snapshots else [],
                 "top_senders": top_senders[:10] if top_senders else [],
                 "primary_stats": {
-                    "total": primary["total"] if primary else 0,
-                    "unread": primary["unread"] if primary else 0,
-                    "newsletters": primary["newsletters"] if primary else 0,
-                    "top_senders": primary["top_senders"][:5] if primary else []
+                    "total": primary["total_emails"] if primary else 0,
+                    "unread": primary["unread_emails"] if primary else 0,
+                    "newsletters": primary["newsletters_count"] if primary else 0,
+                    "top_senders": primary.get("top_senders_json", "[]") if primary else "[]"
                 } if primary else None
             }
             
@@ -171,13 +186,52 @@ Raw Data:
 
 Format your response as markdown starting directly with '### 🤖 AI 智能深度分析與建議'."""
             
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
-            )
-            gemini_insights = "\n" + response.text.strip() + "\n"
+            if provider == "gemini":
+                from google import genai
+                print(f"GEMINI_API_KEY detected. Invoking Gemini API ({model}) for advanced insights...")
+                client = genai.Client(api_key=api_key)
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt
+                )
+                gemini_insights = "\n" + response.text.strip() + "\n"
+                
+            elif provider == "opencoder-go":
+                import urllib.request
+                print(f"OPENCODE_API_KEY detected. Invoking OpenCode Go API ({model}) for advanced insights...")
+                
+                # Build chat completions endpoint
+                endpoint = base_url.rstrip("/")
+                if not endpoint.endswith("/chat/completions"):
+                    endpoint = f"{endpoint}/chat/completions"
+                    
+                headers = {
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Gmail-Cleanup/1.0"
+                }
+                
+                payload = {
+                    "model": model,
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ]
+                }
+                
+                req = urllib.request.Request(
+                    endpoint,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers=headers,
+                    method="POST"
+                )
+                
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    content = res_data["choices"][0]["message"]["content"]
+                    gemini_insights = "\n" + content.strip() + "\n"
+                    
         except Exception as e:
-            print(f"Warning: Failed to call Gemini API: {e}. Falling back to programmatic statistics only.")
+            print(f"Warning: Failed to call AI API ({provider}): {e}. Falling back to programmatic statistics only.")
 
     # Combine everything into the final Markdown Report
     date_str = datetime.now().strftime("%Y-%m-%d")

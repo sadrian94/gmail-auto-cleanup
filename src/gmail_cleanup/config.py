@@ -28,6 +28,12 @@ DEFAULT_CONFIG_CONTENT = {
             "action": "TRASH",
             "enabled": True
         }
+    },
+    "ai": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "api_key_env": "GEMINI_API_KEY",
+        "base_url": "https://opencode.ai/zen/go/v1"
     }
 }
 
@@ -82,3 +88,7 @@ class AppConfig:
     @property
     def rules(self) -> dict:
         return self.data.get("rules", {})
+
+    @property
+    def ai(self) -> dict:
+        return self.data.get("ai", {})

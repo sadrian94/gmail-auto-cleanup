@@ -93,6 +93,46 @@ class TestAnalyticsDB(unittest.TestCase):
             "dummy", "mock_analytics.db", "dashboard.html"
         )
 
+    @unittest.mock.patch('urllib.request.urlopen')
+    @unittest.mock.patch('gmail_cleanup.config.AppConfig')
+    @unittest.mock.patch('os.environ', {"OPENCODE_API_KEY": "mock-opencode-key"})
+    def test_generate_weekly_report_opencoder_go(self, mock_app_config, mock_urlopen):
+        # Setup mock config
+        mock_config_instance = mock_app_config.return_value
+        mock_config_instance.accounts = {"dummy": "dev_test_account@gmail.com"}
+        mock_config_instance.ai = {
+            "provider": "opencoder-go",
+            "model": "deepseek-chat",
+            "api_key_env": "OPENCODE_API_KEY",
+            "base_url": "https://opencode.ai/zen/go/v1"
+        }
+        
+        # Setup mock db and run generation within a temp directory
+        import tempfile
+        from pathlib import Path
+        
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_file = str(Path(tmpdir) / "test_analytics.db")
+            db = AnalyticsDB(db_file)
+            # Populate runs to make report generation happy
+            db.record_run("dummy", True, [{"rule_name": "social", "found_count": 5, "deleted_count": 5}], [])
+            db.close()
+            
+            # Mock API response
+            mock_response = unittest.mock.Mock()
+            mock_response.read.return_value = b'{"choices": [{"message": {"content": "### AI Insights\\n- Mocked Opencode Go Insights"}}]}'
+            mock_urlopen.return_value.__enter__.return_value = mock_response
+            
+            from gmail_cleanup.ai_summary import generate_weekly_report
+            report_md = generate_weekly_report("dummy", db_file, tmpdir)
+            self.assertIn("Mocked Opencode Go Insights", report_md)
+            
+        # Verify urlopen was called
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args[0][0]
+        self.assertEqual(req.full_url, "https://opencode.ai/zen/go/v1/chat/completions")
+        self.assertEqual(req.get_header("Authorization"), "Bearer mock-opencode-key")
+
 if __name__ == "__main__":
     import unittest.mock
     unittest.main()

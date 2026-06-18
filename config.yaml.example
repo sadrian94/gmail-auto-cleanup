@@ -22,3 +22,12 @@ rules:
     days: 730  # 2 years
     action: TRASH
     enabled: true
+
+# AI Insights Service Settings
+# Supports "gemini" and "opencoder-go" providers
+ai:
+  provider: "gemini"         # "gemini" or "opencoder-go"
+  model: "gemini-2.5-flash"  # e.g., "gemini-2.5-flash" or "deepseek-chat"
+  api_key_env: "GEMINI_API_KEY" # Env var holding your API key (e.g. GEMINI_API_KEY or OPENCODE_API_KEY)
+  base_url: "https://opencode.ai/zen/go/v1" # Base URL for opencoder-go / OpenAI compatible APIs
+
