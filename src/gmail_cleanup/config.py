@@ -33,6 +33,7 @@ DEFAULT_CONFIG_CONTENT = {
         "provider": "gemini",
         "model": "gemini-2.5-flash",
         "api_key_env": "GEMINI_API_KEY",
+        "api_key": "",
         "base_url": "https://opencode.ai/zen/go/v1"
     }
 }

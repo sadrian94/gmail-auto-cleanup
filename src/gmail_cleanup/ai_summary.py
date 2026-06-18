@@ -160,7 +160,9 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
         model = "deepseek-chat"
 
     gemini_insights = ""
-    api_key = os.environ.get(api_key_env)
+    api_key = ai_config.get("api_key")
+    if not api_key:
+        api_key = os.environ.get(api_key_env)
     
     if api_key:
         try:
