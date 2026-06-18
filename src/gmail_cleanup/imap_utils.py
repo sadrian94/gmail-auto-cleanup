@@ -264,6 +264,18 @@ class GmailSession:
         try:
             content = body_bytes.decode('utf-8', errors='ignore').strip()
             
+            # Check if it starts with a MIME boundary delimiter (e.g. --boundary)
+            first_line = content.split('\n', 1)[0].strip()
+            if first_line.startswith('--'):
+                boundary = first_line[2:]
+                # If the boundary ends with -- (closing boundary), strip it
+                if boundary.endswith('--'):
+                    boundary = boundary[:-2]
+                
+                # Prepend the dummy content-type header specifying this boundary
+                mime_headers = f"MIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=\"{boundary}\"\n\n"
+                content = mime_headers + content
+
             # If it's multipart/mime, parse it
             if "Content-Type:" in content or "boundary=" in content or content.startswith("This is a multi-part message"):
                 msg = email.message_from_string(content)

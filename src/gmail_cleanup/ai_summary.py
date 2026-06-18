@@ -182,7 +182,7 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
                     "newsletters": primary["newsletters_count"] if primary else 0,
                     "top_senders": primary.get("top_senders_json", "[]") if primary else "[]"
                 } if primary else None,
-                "recent_emails": recent_emails[:50]  # Limit to 50 to fit inside prompt context
+                "recent_emails": recent_emails[:20]  # Limit to 20 to keep payload compact and avoid timeouts
             }
             
             prompt = f"""You are a professional email productivity analyst. Analyze the following email statistics and the body snippets of recent emails in the Primary Inbox, and generate:
@@ -256,7 +256,7 @@ Output only valid JSON. Do not wrap in markdown code block formatting (like ```j
                     method="POST"
                 )
                 
-                with urllib.request.urlopen(req, timeout=30) as response:
+                with urllib.request.urlopen(req, timeout=60) as response:
                     res_data = json.loads(response.read().decode("utf-8"))
                     response_text = res_data["choices"][0]["message"]["content"].strip()
 

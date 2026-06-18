@@ -1,6 +1,7 @@
 import sqlite3
 import json
 import re
+import html
 from pathlib import Path
 from datetime import datetime
 
@@ -104,7 +105,8 @@ def generate_dashboard(account: str, db_path: str, output_path: str) -> None:
     """, (account,)).fetchone()
     
     if top_sender_row:
-        top_sender = f"{top_sender_row['sender_name'] or top_sender_row['sender_email']} ({top_sender_row['total']})"
+        top_sender_name = top_sender_row['sender_name'] or top_sender_row['sender_email']
+        top_sender = f"{html.escape(top_sender_name)} ({top_sender_row['total']})"
     else:
         top_sender = "N/A"
         
@@ -172,15 +174,19 @@ def generate_dashboard(account: str, db_path: str, output_path: str) -> None:
     
     recent_emails_html = []
     for row in recent_email_rows:
-        sender = row["sender_name"] or row["sender_email"].split("@")[0]
+        sender = html.escape(row["sender_name"] or row["sender_email"].split("@")[0])
+        sender_email = html.escape(row["sender_email"])
+        subject = html.escape(row["subject"] or '(無主旨)')
+        snippet = html.escape(row["snippet"] or '(無郵件內文摘要)')
+        date = html.escape(row["date"][:10])
         recent_emails_html.append(f"""
         <div class="email-item">
             <div class="email-meta">
-                <span class="email-sender" title="{row['sender_email']}">{sender}</span>
-                <span class="email-date">{row['date'][:10]}</span>
+                <span class="email-sender" title="{sender_email}">{sender}</span>
+                <span class="email-date">{date}</span>
             </div>
-            <div class="email-subject">{row['subject'] or '(無主旨)'}</div>
-            <div class="email-snippet">{row['snippet'] or '(無郵件內文摘要)'}</div>
+            <div class="email-subject">{subject}</div>
+            <div class="email-snippet">{snippet}</div>
         </div>
         """)
     recent_emails_html_str = "\n".join(recent_emails_html) if recent_emails_html else "<p class='no-data'>近 7 天主要收件箱沒有掃描到郵件。</p>"
@@ -211,7 +217,7 @@ def generate_dashboard(account: str, db_path: str, output_path: str) -> None:
         todos_html.append(f"""
         <label class="todo-item">
             <input type="checkbox" id="todo-{i}">
-            <span class="todo-text">{todo}</span>
+            <span class="todo-text">{html.escape(todo)}</span>
         </label>
         """)
     todos_html_str = "\n".join(todos_html) if todos_html else "<p class='no-data'>本週沒有代辦事項建議。</p>"
@@ -221,7 +227,7 @@ def generate_dashboard(account: str, db_path: str, output_path: str) -> None:
         topics_html.append(f"""
         <div class="topic-item">
             <div class="topic-icon">📌</div>
-            <div class="topic-text">{topic}</div>
+            <div class="topic-text">{html.escape(topic)}</div>
         </div>
         """)
     topics_html_str = "\n".join(topics_html) if topics_html else "<p class='no-data'>本週沒有追蹤摘要建議。</p>"
