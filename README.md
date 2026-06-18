@@ -1,47 +1,65 @@
 # Gmail Auto-Cleanup & Primary Inbox Analyzer
 
-An automated, safety-first, AI-enhanced email cleanup system and Primary Inbox analyzer for Gmail. 
+An automated, safety-first, AI-enhanced email cleanup system and Primary Inbox analyzer for Gmail.
 
-Built using standard Python IMAP libraries (zero external API registration required) and SQLite for trend tracking, it runs once a week to move promotions, social notifications, and old receipts to the Trash, while profiling your Primary Inbox for newsletters and clutter to recommend manual cleanup.
+Built using standard Python IMAP libraries (zero external API registration required) and SQLite for trend tracking. Runs weekly to move promotions, social notifications, old purchases, and updates to Trash — while deep-scanning your Primary Inbox to generate AI-powered to-dos, topics, and a premium interactive dashboard.
 
 ---
 
 ## 📐 Architecture & Workflow
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        Gmail Auto-Cleanup Tool                         │
-│                                                                        │
-│   ┌─────────────────────┐  ┌──────────────────────────────────────┐    │
-│   │  🧹 Cleanup Engine   │  │  📊 Primary Inbox Analyzer           │    │
-│   │  (Pillar 1)         │  │  (Pillar 2)                          │    │
-│   │  • Promotions > 30d │  │  • Scans past 30 days of Primary     │    │
-│   │  • Social > 7d      │  │  • Analyzes Unread vs Read           │    │
-│   │  • Receipts > 2y    │  │  • List-Unsubscribe Header Parser    │    │
-│   │  • Chunks of 500    │  │  • Identifies top newsletter senders │    │
-│   └─────────┬───────────┘  └──────────────────┬───────────────────┘    │
-│             │                                 │                        │
-│             └────────────────┬────────────────┘                        │
-│                              ▼                                         │
-│                   ┌──────────────────────┐                             │
-│                   │  💾 SQLite Analytics │                             │
-│                   │  • Save run history  │                             │
-│                   │  • Log inbox sizes   │                             │
-│                   └──────────┬───────────┘                             │
-│                              ▼                                         │
-│                   ┌──────────────────────┐                             │
-│                   │   📝 Weekly Report   │                             │
-│                   │  • Growth WoW trends │                             │
-│                   │  • Unsubscribe tips  │                             │
-│                   │  • Copy-paste Search │                             │
-│                   └──────────────────────┘                             │
-└────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                          Gmail Auto-Cleanup Tool                                  │
+│                                                                                    │
+│  ┌─────────────────────┐   ┌────────────────────────────────────────────────┐     │
+│  │  🧹 Cleanup Engine   │   │  📊 Primary Inbox Analyzer                     │     │
+│  │  (Pillar 1)         │   │  (Pillar 2)                                    │     │
+│  │  • Promotions > 30d │   │  • Scans configurable timeframe (default: 7d)  │     │
+│  │  • Social > 7d      │   │  • Analyzes Unread vs Read, top senders        │     │
+│  │  • Purchases > 2y   │   │  • Fetches body snippets for content analysis  │     │
+│  │  • Updates > 30d    │   │  • Identifies newsletters & clutter senders    │     │
+│  │  • Chunks of 500    │   │  • Excludes Do-not-delete labeled emails       │     │
+│  └──────────┬──────────┘   └───────────────────────┬────────────────────────┘     │
+│             │                                      │                               │
+│             └──────────────────┬───────────────────┘                               │
+│                                ▼                                                   │
+│                    ┌───────────────────────┐                                       │
+│                    │   💾 SQLite Analytics  │                                       │
+│                    │   • Run history        │                                       │
+│                    │   • Inbox snapshots    │                                       │
+│                    │   • Sender stats       │                                       │
+│                    │   • Email snippets     │                                       │
+│                    └───────────┬───────────┘                                       │
+│                                ▼                                                   │
+│          ┌─────────────────────────────────────────────┐                           │
+│          │  🤖 AI Layer (OpenCode Go / deepseek-v4-flash)│                           │
+│          │  • Analyzes metrics + recent email snippets  │                           │
+│          │  • Returns structured JSON output            │                           │
+│          │  • Suggested To-dos from email content       │                           │
+│          │  • Topics to Catch Up (news, events, tasks)  │                           │
+│          │  • Suggested clutter senders → auto-labels   │                           │
+│          └─────────────────────┬───────────────────────┘                           │
+│                                ▼                                                   │
+│        ┌────────────────────────────────────────────────────┐                      │
+│        │  📝 Obsidian Weekly Report + 📊 Interactive Dashboard │                      │
+│        │  • WoW trends, unsubscribe tips, search queries     │                      │
+│        │  • Suggested To-dos checklist                       │                      │
+│        │  • Topics to Catch Up (past 7 days)                 │                      │
+│        │  • Premium two-column tabbed HTML dashboard         │                      │
+│        └────────────────────────────────────────────────────┘                      │
+└──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Clean & Scrape:** Connects securely to Gmail IMAP, runs configured cleanup rules, and fetches headers from the past 30 days of the Primary Inbox.
-2. **Log SQLite Stats:** Records sizes, rule deletions, sender analytics, and unread statistics to `~/.gmail_cleanup/analytics.db`.
-3. **Generate Weekly Report:** Programmatically evaluates email trends, growth rates, and clutter senders, compiling them into a beautiful Markdown report file (Weekly-Cleanup-Report-YYYY-MM-DD.md).
-4. **Obsidian Integration:** Directly publishes the report into your Obsidian Vault's `00 - Inbox/Agent_Output/` directory for immediate viewing.
+**Workflow steps:**
+
+1. **Rule-Based Cleanup:** Connects to Gmail IMAP, applies cleanup rules (Promotions, Social, Purchases, Updates), skipping anything labeled `Do-not-delete`.
+2. **Primary Inbox Profiling:** Fetches headers and body snippets from recent Primary Inbox emails.
+3. **SQLite Logging:** Records run history, inbox snapshots, sender stats, and email snippets to `~/.gmail_cleanup/analytics.db`.
+4. **AI Deep Analysis:** Sends metrics + email body snippets to the AI layer, receiving a structured JSON response with a report, suggested to-dos, topics to catch up, and clutter senders to label.
+5. **Auto-Labeling:** Applies the `Review-to-delete` Gmail label to emails from AI-identified clutter senders.
+6. **Obsidian Report:** Writes `Weekly-Cleanup-Report-YYYY-MM-DD.md` to your vault's `00 - Inbox/Agent_Output/`.
+7. **Dashboard:** Generates a static `dashboard.html` with interactive charts, email list, AI report, to-dos, and topics tabs.
 
 ---
 
@@ -50,7 +68,6 @@ Built using standard Python IMAP libraries (zero external API registration requi
 This tool uses [uv](https://github.com/astral-sh/uv) for fast, reliable package management.
 
 ### 1. Clone & Install
-Install the tool in editable mode with development/testing dependencies:
 ```bash
 git clone https://github.com/sadrian94/gmail-auto-cleanup.git
 cd gmail-auto-cleanup
@@ -62,13 +79,12 @@ Create a configuration file at `~/.gmail_cleanup/config.yaml` or directly in the
 
 ```yaml
 accounts:
-  dummy: dev_test_account@gmail.com
   personal: your_email@gmail.com
 
 # Path to write weekly report markdown files directly into Obsidian
-obsidian_vault_path:
+obsidian_vault_path: "C:/Users/yourname/Obsidian/My_Vault"
 
-# Days of age required before moving to Gmail Trash
+# Cleanup rules — configure days-old threshold and action per category
 rules:
   promotions:
     days: 30
@@ -78,18 +94,33 @@ rules:
     days: 7
     action: TRASH
     enabled: true
-  receipts:
-    days: 730  # 2 years
+  purchases:
+    days: 730  # 2 years — uses label:purchases + receipt/invoice subject fallback
     action: TRASH
     enabled: true
+  updates:
+    days: 30
+    action: TRASH
+    enabled: true
+
+# Gmail labels auto-created at session start if missing
+labels:
+  review_to_delete: "Review-to-delete"   # AI-suggested clutter → applied automatically
+  do_not_delete: "Do-not-delete"         # Emails to never touch — excluded from all scans
+
+# AI Insights service — supports "gemini" or "opencoder-go"
+ai:
+  provider: "opencoder-go"
+  model: "deepseek-v4-flash"
+  api_key: "sk-..."
+  base_url: "https://opencode.ai/zen/go/v1"
 ```
 
 ### 3. Secure Credentials Setup (Keyring)
-Instead of plaintext passwords on disk, credentials are saved inside your operating system's Keychain/Credential Locker.
+Credentials are saved inside your operating system's Keychain/Credential Locker — never plaintext on disk.
 
-Run the interactive setup flag to register your **Gmail App Password** (generate one under Google Account > Security > App Passwords):
+Generate a **Gmail App Password** (Google Account → Security → App Passwords), then register it:
 ```bash
-# Register personal account password
 gmail-cleanup --account personal --set-password
 ```
 
@@ -98,66 +129,86 @@ gmail-cleanup --account personal --set-password
 ## 💻 CLI Reference
 
 ### 🔍 Dry-Run Mode (Safe — no changes)
-Verify what will be deleted and scan the Primary Inbox:
 ```bash
-# Scan dummy account
-gmail-cleanup --account dummy
-
-# Scan personal account (Deep sender scan + Primary Inbox profile)
+# Scan and profile Primary Inbox (past 7 days by default)
 gmail-cleanup --account personal --analytics-deep
+
+# Scan with a custom Primary Inbox timeframe
+gmail-cleanup --account personal --analytics-deep --primary-days 30
+
+# Scan all-time Primary Inbox (may be slow on large inboxes)
+gmail-cleanup --account personal --analytics-deep --primary-days all
 ```
 
-### 🧹 Execution Mode (Actually Clean & Log)
-Move matching Promotions/Social/Receipts to Trash and record stats:
+### 🧹 Execution Mode (Clean + AI Summary)
 ```bash
-# Run weekly cleanup + update database + output Markdown report
+# Full weekly run: cleanup + deep analytics + AI report + auto-label clutter
 gmail-cleanup --account personal --analytics-deep --apply --ai-summary
+
+# Dry-run with AI summary (no deletions, only label and report)
+gmail-cleanup --account personal --analytics-deep --ai-summary --primary-days 7
 ```
 
-### 📊 Reports & Summaries
-View historical runs and trends directly from the SQLite database:
+### 📊 Dashboard
+Generate the static interactive HTML dashboard:
+```bash
+gmail-cleanup --account personal --dashboard
+# or
+make dashboard
+```
+
+This compiles statistics from the SQLite database and generates `dashboard.html` in the workspace root. Double-click to open in any browser — no local server needed.
+
+The dashboard features:
+- **KPI cards:** Inbox, Promotions, Social counts + lifetime cleaned total
+- **Left panel tabs:** 📊 走勢分析 (Trend charts, Doughnut sender chart, Weekly bar chart) | ✉️ 近期郵件 (Recent email list with subjects & snippets)
+- **Right panel tabs:** 報告 (Full AI weekly report) | 待辦 (AI-suggested to-dos as interactive checkboxes) | 摘要 (Topics to Catch Up as pinned items)
+
+#### 📈 Dashboard Preview
+![Dashboard Preview](docs/dashboard_preview.png)
+
+### 📝 Reports
 ```bash
 # Print raw JSON weekly metrics
 gmail-cleanup --report
 
 # Print human-readable summary to terminal
 gmail-cleanup --report-text
-
-# Generate the static HTML dashboard
-gmail-cleanup --account personal --dashboard
 ```
 
-Or generate it using `make`:
-```bash
-make dashboard
-```
+---
 
-This compiles statistics from the SQLite database and generates a premium, dark-themed static HTML page `dashboard.html` in the root of the workspace. Simply double-click the file to open it in any browser offline.
+## 🏷️ Smart Labeling System
 
-#### 📈 Dashboard Preview
-![Dashboard Preview](docs/dashboard_preview.png)
+The tool automatically manages two Gmail labels at startup:
+
+| Label | Purpose |
+|---|---|
+| `Review-to-delete` | Applied to emails from AI-identified clutter senders. Review manually in Gmail and delete when ready. |
+| `Do-not-delete` | Apply this manually to any email you want permanently protected. The tool will never scan, analyze, or touch these emails. |
+
+Labels are **automatically created** if they don't exist in your Gmail account.
 
 ---
 
 ## ⏱️ Scheduling (Weekly Automation)
 
-To automate the workflow to run once a week, configure the provided scripts in your OS scheduler:
-
 ### Windows (Task Scheduler)
-Create a weekly Task Scheduler task pointing to:
 - **Program/Script:** `powershell.exe`
 - **Arguments:** `-ExecutionPolicy Bypass -File C:\path\to\workspace\scripts\run-weekly.ps1`
 
-### macOS / Linux (cron / launchd)
-Add a cron job using `crontab -e` to trigger the weekly script:
+### macOS / Linux (cron)
 ```cron
-# Run every Sunday at 09:00 CST
+# Run every Sunday at 09:00
 0 9 * * 0 /bin/bash /path/to/workspace/scripts/run-weekly.sh >> /path/to/workspace/cleanup.log 2>&1
 ```
 
 ---
 
 ## 🔒 Safety First Principles
-- **No Primary Inbox Auto-deletion:** The tool only scans Primary Inbox headers to recommend improvements. It will **never** automatically delete or archive anything in your Primary Inbox.
-- **Copy-Paste Search Queries:** Suggested cleanup items (e.g. newsletter senders) in the weekly report are presented alongside ready-to-use search strings (e.g., `from:noreply@github.com label:inbox is:unread`). You can copy these directly into Gmail's search bar to bulk-archive or delete safely.
-- **Gmail Trash Buffer:** Matching emails are moved to Gmail's native `Trash` (not permanently deleted immediately). They will remain in your trash for 30 days as a recovery safety buffer before Google automatically expunges them.
+
+- **No Primary Inbox Auto-deletion:** The tool only scans Primary Inbox headers and snippets to recommend improvements. It will **never** automatically delete anything in your Primary Inbox.
+- **Do-not-delete Exclusion:** Any email labeled `Do-not-delete` is permanently excluded from all cleanup rules, scans, analytics, and AI labeling.
+- **Review-to-delete Buffer:** AI-suggested clutter is labeled — never deleted. You retain full control over what actually gets removed.
+- **Gmail Trash Buffer:** Matching emails from cleanup rules are moved to Gmail's native `Trash`, not permanently deleted. They remain for 30 days as a recovery buffer.
+- **Copy-Paste Search Queries:** The weekly report includes ready-to-use Gmail search strings (e.g., `from:noreply@github.com label:inbox is:unread`) to batch-archive or delete safely.
