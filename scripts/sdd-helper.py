@@ -6,7 +6,7 @@ from pathlib import Path
 
 def get_git_dir():
     try:
-        res = subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, text=True, check=True)
+        res = subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, encoding="utf-8", check=True)
         return Path(res.stdout.strip())
     except Exception as e:
         print(f"Error getting git dir: {e}", file=sys.stderr)
@@ -14,7 +14,7 @@ def get_git_dir():
 
 def get_git_rev(rev):
     try:
-        res = subprocess.run(["git", "rev-parse", rev], capture_output=True, text=True, check=True)
+        res = subprocess.run(["git", "rev-parse", rev], capture_output=True, encoding="utf-8", check=True)
         return res.stdout.strip()
     except Exception as e:
         print(f"Error getting git revision for {rev}: {e}", file=sys.stderr)
@@ -22,7 +22,7 @@ def get_git_rev(rev):
 
 def get_git_short_rev(rev):
     try:
-        res = subprocess.run(["git", "rev-parse", "--short", rev], capture_output=True, text=True, check=True)
+        res = subprocess.run(["git", "rev-parse", "--short", rev], capture_output=True, encoding="utf-8", check=True)
         return res.stdout.strip()
     except Exception as e:
         print(f"Error getting git short revision for {rev}: {e}", file=sys.stderr)
@@ -85,14 +85,14 @@ def cmd_review_package(base, head, outfile=None):
         outfile = str(sdd_dir / f"review-{base_short}..{head_short}.diff")
         
     # Get git log
-    log_res = subprocess.run(["git", "log", "--oneline", f"{base}..{head}"], capture_output=True, text=True, check=True)
+    log_res = subprocess.run(["git", "log", "--oneline", f"{base}..{head}"], capture_output=True, encoding="utf-8", check=True)
     # Get git diff --stat
-    stat_res = subprocess.run(["git", "diff", "--stat", f"{base}..{head}"], capture_output=True, text=True, check=True)
+    stat_res = subprocess.run(["git", "diff", "--stat", f"{base}..{head}"], capture_output=True, encoding="utf-8", check=True)
     # Get git diff -U10
-    diff_res = subprocess.run(["git", "diff", "-U10", f"{base}..{head}"], capture_output=True, text=True, check=True)
+    diff_res = subprocess.run(["git", "diff", "-U10", f"{base}..{head}"], capture_output=True, encoding="utf-8", check=True)
     
     # Get count of commits
-    count_res = subprocess.run(["git", "rev-list", "--count", f"{base}..{head}"], capture_output=True, text=True, check=True)
+    count_res = subprocess.run(["git", "rev-list", "--count", f"{base}..{head}"], capture_output=True, encoding="utf-8", check=True)
     commit_count = count_res.stdout.strip()
     
     package_content = f"""# Review package: {base}..{head}

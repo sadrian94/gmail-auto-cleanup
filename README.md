@@ -122,7 +122,20 @@ gmail-cleanup --report
 
 # Print human-readable summary to terminal
 gmail-cleanup --report-text
+
+# Generate the static HTML dashboard
+gmail-cleanup --account personal --dashboard
 ```
+
+Or generate it using `make`:
+```bash
+make dashboard
+```
+
+This compiles statistics from the SQLite database and generates a premium, dark-themed static HTML page `dashboard.html` in the root of the workspace. Simply double-click the file to open it in any browser offline.
+
+#### 📈 Dashboard Preview
+![Dashboard Preview](docs/dashboard_preview.png)
 
 ---
 
