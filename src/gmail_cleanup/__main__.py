@@ -71,6 +71,11 @@ def main():
         help="Generate the Markdown Weekly Report and write it directly to the configured Obsidian Vault."
     )
     parser.add_argument(
+        "--dashboard",
+        action="store_true",
+        help="Generate the static HTML dashboard based on SQLite stats."
+    )
+    parser.add_argument(
         "--set-password",
         action="store_true",
         help="Set the Gmail App Password for the selected account in the system keyring."
@@ -97,6 +102,16 @@ def main():
     if args.report_text:
         db = AnalyticsDB(config.db_path)
         print(db.generate_text_report(args.account))
+        sys.exit(0)
+
+    if args.dashboard:
+        from gmail_cleanup.dashboard import generate_dashboard
+        try:
+            generate_dashboard(args.account, config.db_path, "dashboard.html")
+            print("Successfully created dashboard.html")
+        except Exception as e:
+            print(f"Error generating dashboard: {e}")
+            sys.exit(1)
         sys.exit(0)
 
     if args.ai_summary and not (args.analytics or args.analytics_deep):

@@ -1,4 +1,5 @@
 import unittest
+import unittest.mock
 from gmail_cleanup.analytics import AnalyticsDB
 
 class TestAnalyticsDB(unittest.TestCase):
@@ -74,5 +75,24 @@ class TestAnalyticsDB(unittest.TestCase):
         self.assertIn("runs", json_report)
         self.assertIn("top_senders", json_report)
 
+    @unittest.mock.patch('gmail_cleanup.dashboard.generate_dashboard')
+    @unittest.mock.patch('gmail_cleanup.__main__.AppConfig')
+    @unittest.mock.patch('sys.argv', ['__main__.py', '--dashboard'])
+    def test_cli_dashboard_flag(self, mock_app_config, mock_generate_dashboard):
+        mock_config_instance = mock_app_config.return_value
+        mock_config_instance.accounts = {"dummy": "dev_test_account@gmail.com"}
+        mock_config_instance.db_path = "mock_analytics.db"
+        
+        from gmail_cleanup.__main__ import main
+        
+        with self.assertRaises(SystemExit) as cm:
+            main()
+            
+        self.assertEqual(cm.exception.code, 0)
+        mock_generate_dashboard.assert_called_once_with(
+            "dummy", "mock_analytics.db", "dashboard.html"
+        )
+
 if __name__ == "__main__":
+    import unittest.mock
     unittest.main()

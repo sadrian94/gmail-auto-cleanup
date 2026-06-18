@@ -1,4 +1,4 @@
-.PHONY: install test run run-personal weekly weekly-apply clean
+.PHONY: install test run run-personal weekly weekly-apply dashboard clean
 
 # Install the package and dependencies
 install:
@@ -23,6 +23,10 @@ weekly:
 # Run weekly actual cleanup
 weekly-apply:
 	uv run python -m gmail_cleanup --account personal --analytics-deep --apply --ai-summary
+
+# Generate static HTML dashboard
+dashboard:
+	uv run python -m gmail_cleanup --account personal --dashboard
 
 # Clean up Python cache and build files
 clean:
