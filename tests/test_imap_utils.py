@@ -138,11 +138,11 @@ class TestCleanBodyContent(unittest.TestCase):
         result = session._clean_body_content(b"")
         self.assertEqual(result, "")
 
-    def test_snippet_truncated_at_400(self):
+    def test_snippet_truncated_at_1000(self):
         session = _make_session()
-        body = ("A" * 500).encode("utf-8")
+        body = ("A" * 1200).encode("utf-8")
         result = session._clean_body_content(body)
-        self.assertLessEqual(len(result), 400)
+        self.assertLessEqual(len(result), 1000)
 
 
 # ---------------------------------------------------------------------------

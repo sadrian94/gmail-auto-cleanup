@@ -98,7 +98,7 @@ The timeframe `N` is configurable via `--primary-days` (default: `7`, accepts in
 
 ### Body Content Scanning (Deep Analysis)
 
-For the most recent 100 emails, the tool fetches the full body text via `BODY.PEEK[TEXT]` and extracts clean `text/plain` snippets (up to 400 characters each) using a robust MIME parser:
+For the most recent 100 emails, the tool fetches the full body text via `BODY.PEEK[TEXT]` and extracts clean `text/plain` snippets (up to 1000 characters each) using a robust MIME parser:
 
 - Detects multipart MIME boundary delimiters in raw body bytes
 - Prepends the appropriate `Content-Type` header to allow correct parsing

@@ -294,8 +294,8 @@ class GmailSession:
             # Replace multiple spaces/newlines with single ones
             content = re.sub(r'\s+', ' ', content)
             
-            # Return a snippet of up to 400 characters
-            return content[:400].strip()
+            # Return a snippet of up to 1000 characters
+            return content[:1000].strip()
         except Exception:
             return ""
 
