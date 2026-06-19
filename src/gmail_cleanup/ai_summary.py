@@ -166,7 +166,7 @@ def generate_weekly_report(account: str, db_path: str, vault_path: str) -> str:
                     "newsletters": primary["newsletters_count"] if primary else 0,
                     "top_senders": primary.get("top_senders_json", "[]") if primary else "[]"
                 } if primary else None,
-                "recent_emails": recent_emails[:20]  # Limit to 20 to keep payload compact and avoid timeouts
+                "recent_emails": recent_emails[:100]  # Limit to 100 to analyze all downloaded snippets
             }
 
             prompt = f"""You are a professional email productivity analyst. Analyze the following email statistics and the body snippets of recent emails in the Primary Inbox, and generate:
