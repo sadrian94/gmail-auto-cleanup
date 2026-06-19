@@ -62,7 +62,7 @@ All cleanup rules use Gmail's `X-GM-RAW` IMAP extension to execute full Gmail se
 | `promotions` | `category:promotions older_than:Nd` | 30 days |
 | `social` | `category:social older_than:Nd` | 7 days |
 | `purchases` | `label:purchases older_than:Nd` (falls back to subject keywords: receipt, invoice, billing, order confirmation) | 730 days (2 years) |
-| `updates` | `label:updates older_than:Nd` | 30 days |
+| `updates` | `category:updates older_than:Nd -subject:(invoice OR receipt OR bill OR bank OR statement OR tax OR payment OR confirm OR security OR login OR otp OR 發票 OR 帳單 OR 收據 OR 明細 OR 交易 OR 扣款 OR 信用卡 OR 機票 OR 訂單 OR 登入 OR 密碼 OR 驗證)` | 365 days (1 year) |
 
 All rules automatically append `-label:Do-not-delete` to exclude protected emails.
 
