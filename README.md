@@ -160,9 +160,12 @@ make dashboard
 This compiles statistics from the SQLite database and generates `dashboard.html` in the workspace root. Double-click to open in any browser — no local server needed.
 
 The dashboard features:
-- **KPI cards:** Inbox, Promotions, Social counts + lifetime cleaned total
-- **Left panel tabs:** 📊 走勢分析 (Trend charts, Doughnut sender chart, Weekly bar chart) | ✉️ 近期郵件 (Recent email list with subjects & snippets)
-- **Right panel tabs:** 報告 (Full AI weekly report) | 待辦 (AI-suggested to-dos as interactive checkboxes) | 摘要 (Topics to Catch Up as pinned items)
+- **KPI Cards:** Inbox, Promotions, Social counts + lifetime cleaned total.
+- **Left Panel Tabs:** 📊 走勢分析 / Analytics (interactive trend line charts, top sender doughnut charts, weekly cleanup bar charts) | ✉️ 近期郵件 / Recent Emails (email list with subject lines and MIME-parsed body snippets).
+- **Right Panel Tabs:** 報告 / Report (weekly AI summary with auto-rendered markdown tables) | 待辦 / To-dos (interactive checklists for AI-suggested tasks) | 摘要 / Topics (AI-extracted email topics as tags).
+- **Interactive Custom Themes:** Switch dynamically between **Slate** (dark glass), **Nord** (arctic ice), **Cyberpunk** (neon dark), **Forest** (emerald green), and **Sunset** (warm twilight) themes. Switches CSS colors and updates Chart.js styles immediately.
+- **Dynamic Localization Toggle:** Translate all headings, tab text, KPI descriptions, chart titles, and AI reports between **English** and **繁體中文** at the click of a button.
+- **Preferences Persistence:** Remembers your chosen theme and language settings in `localStorage` across regenerations.
 
 #### 📈 Dashboard Preview
 ![Dashboard Preview](docs/dashboard_preview.png)

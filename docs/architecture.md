@@ -240,20 +240,44 @@ A static, double-click-to-open HTML dashboard generated from SQLite data. Zero n
 │                              │                           │
 │  📊 分析 tab:                │  報告 tab:                │
 │  • 30-day Inbox trend chart  │  Full weekly AI report    │
-│  • Top senders doughnut      │                           │
-│  • Weekly cleanup bar chart  │  待辦 tab:                │
-│                              │  AI to-dos as checkboxes  │
-│  ✉️ 近期郵件 tab:             │                           │
-│  • Recent Primary Inbox list │  摘要 tab:                │
-│  • Subject + body snippets   │  Topics to Catch Up pins  │
+│  • Top senders doughnut      │  (with Markdown parser)   │
+│  • Weekly cleanup bar chart  │                           │
+│                              │  待辦 tab:                │
+│  ✉️ 近期郵件 tab:             │  AI to-dos as checkboxes  │
+│  • Recent Primary Inbox list │                           │
+│  • Subject + body snippets   │  摘要 tab:                │
+│                              │  Topics to Catch Up pins  │
 └──────────────────────────────┴───────────────────────────┘
 ```
 
-### Technology
-- **Chart.js** (via CDN) for interactive charts
-- **Vanilla CSS** with CSS custom properties, `backdrop-filter`, and HSL gradients
-- **Google Fonts** (Outfit) for premium typography
-- All dynamic values HTML-escaped to prevent DOM corruption from email content
+### Key Features & Technology
+
+1. **Interactive Theme Selection:**
+   - Supports 5 premium custom themes:
+     - **Slate:** Sleek dark glassmorphism.
+     - **Nord:** Clean arctic blue aesthetic.
+     - **Cyberpunk:** Vibrant neon and high-contrast dark.
+     - **Forest:** Deep emerald and organic hues.
+     - **Sunset:** Warm twilight tones.
+   - Dynamic update flow: Clicking a theme button switches the document variables and updates the Chart.js instances (axis ticks, grids, dataset colors, and tooltips) on the fly without refreshing the page.
+
+2. **Full Localization (zh/en):**
+   - Interactive language switcher toggle in the header.
+   - Translates all dashboard titles, tab names, KPI cards, table headers, chart labels, tooltip text, and AI status elements dynamically.
+   - Uses data-i18n attributes (`data-en` and `data-zh`) for all key DOM nodes.
+
+3. **Persistent User Settings:**
+   - Active language and theme selections are persisted in browser `localStorage`, ensuring preferences survive page reloads and report regenerations.
+
+4. **Dynamic AI Markdown Table Parser:**
+   - Custom client-side JavaScript parser translates markdown headings, lists, bold text, and HTML-escaped characters from the LLM weekly report.
+   - Specially handles markdown tables, rendering them as beautifully styled, responsive HTML tables.
+
+5. **Chart.js & Styling:**
+   - **Chart.js** (via CDN) for responsive line, doughnut, and bar charts.
+   - **Vanilla CSS** with backdrop-filters, dynamic linear gradients, and layout curves.
+   - **Google Fonts** (Outfit) for clean modern typography.
+   - Full HTML-escaping on all dynamic values to prevent DOM structure corruption or XSS from email content.
 
 ---
 

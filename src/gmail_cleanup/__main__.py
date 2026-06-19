@@ -133,12 +133,18 @@ def main():
     run_analytics = args.analytics or args.analytics_deep
 
     try:
-        # Parse primary_days
-        primary_days = args.primary_days
-        try:
-            primary_days = int(primary_days)
-        except ValueError:
-            pass
+        # Validate --primary-days: must be a positive integer or "all"
+        raw_days = args.primary_days
+        if raw_days.lower() in ("all", "0", "-1"):
+            primary_days = raw_days.lower()
+        else:
+            try:
+                primary_days = int(raw_days)
+                if primary_days <= 0:
+                    raise ValueError
+            except ValueError:
+                print(f"Error: --primary-days must be a positive integer or 'all', got: '{raw_days}'")
+                sys.exit(1)
 
         summary = run_cleanup_task(
             account_name=args.account,

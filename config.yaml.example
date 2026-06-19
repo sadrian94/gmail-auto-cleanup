@@ -35,8 +35,12 @@ labels:
 # AI Insights Service Settings
 # Supports "gemini" and "opencoder-go" providers
 ai:
-  provider: "gemini"         # "gemini" or "opencoder-go"
+  provider: "gemini"         # "gemini" or "opencoder-go" (or any OpenAI-compatible provider)
   model: "gemini-2.5-flash"  # e.g., "gemini-2.5-flash" or "deepseek-chat"
-  api_key_env: "GEMINI_API_KEY" # Env var holding your API key (e.g. GEMINI_API_KEY or OPENCODE_API_KEY)
+  api_key_env: "GEMINI_API_KEY" # Name of the env var holding your API key
+  # api_key_env: "OPENCODE_API_KEY"  # For opencoder-go / OpenAI-compat providers
   base_url: "https://opencode.ai/zen/go/v1" # Base URL for opencoder-go / OpenAI compatible APIs
+  # Tip: store the key in your environment, not here:
+  #   Windows: [System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "sk-...", "User")
+  #   macOS/Linux: export GEMINI_API_KEY=sk-...  (add to ~/.zshrc or ~/.bashrc)
 
