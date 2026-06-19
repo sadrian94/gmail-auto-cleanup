@@ -57,6 +57,13 @@ def run_cleanup_task(
                 query = f"category:social older_than:{days}d"
             elif rule_name == "purchases" or rule_name == "receipts":
                 query = f"label:purchases older_than:{days}d"
+            elif rule_name == "updates":
+                exclude_keywords = (
+                    "invoice OR receipt OR bill OR bank OR statement OR tax OR payment OR confirm OR "
+                    "security OR login OR otp OR 發票 OR 帳單 OR 收據 OR 明細 OR 交易 OR 扣款 OR "
+                    "信用卡 OR 機票 OR 訂單 OR 登入 OR 密碼 OR 驗證"
+                )
+                query = f"category:updates older_than:{days}d -subject:({exclude_keywords})"
             else:
                 # Custom rule support
                 query = f"label:{rule_name} older_than:{days}d"

@@ -29,7 +29,7 @@ DEFAULT_CONFIG_CONTENT = {
             "enabled": True
         },
         "updates": {
-            "days": 30,
+            "days": 365,
             "action": "TRASH",
             "enabled": True
         }

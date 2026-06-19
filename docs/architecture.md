@@ -121,7 +121,7 @@ The AI layer takes inbox metrics and email snippets as input and returns a **str
 {
   "report_markdown": "...",
   "suggested_clutter_senders": ["noreply@foo.com", "..."],
-  "suggested_todos": ["Follow up on I-485 biometrics", "..."],
+  "suggested_todos": ["Follow up on biometrics", "..."],
   "topics_catchup": ["SpaceX acquires AI startup for $60B", "..."]
 }
 ```
