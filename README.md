@@ -99,7 +99,7 @@ rules:
     action: TRASH
     enabled: true
   updates:
-    days: 30
+    days: 365
     action: TRASH
     enabled: true
 
